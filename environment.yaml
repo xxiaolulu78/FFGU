@@ -1,4 +1,4 @@
-name: guide_py39
+name: ffgu_py39
 channels:
   - pytorch
   - nvidia
