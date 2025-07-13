@@ -1,0 +1,99 @@
+task:
+  _target_: unlearndm.DeleteCeleb
+
+num_clients: 10 
+random_seed: 1 
+project_name: FFGU-deletion
+output_dir: /FFGU/outputs
+checkpoint_path: /FFGU/checkpoints/google/ddpm-celebahq-256 # checkpoints/cifar/base/final/checkpoint-550000 # google/ddpm-cifar10-32 # checkpoints/cifar/base/2024-04-17_03-08-11/checkpoint-60000 #checkpoints/cifar/base/pretrained/ddpm_ema_cifar10
+data_dir: /FFGU/data/datasets/celeb
+
+deletion:
+  img_name: [27390.jpg]
+  target_name: [10130.jpg]
+  loss_fn: guide 
+  timestep_del_window: 500 
+  eta: 1e-3
+  loss_params: {}
+  superfactor_decay: null
+  inception_frequency: null
+  training_steps: null
+
+transform:
+  _target_: torchvision.transforms.Compose
+  transforms:
+    - _target_: torchvision.transforms.Resize
+      size: [256, 256]
+    - _target_: torchvision.transforms.ToTensor
+    - _target_: torchvision.transforms.Normalize 
+      mean: [0.5] 
+      std: [0.5] 
+
+metrics:
+  classifier_cfg: null
+  fraction_deletion: null
+  inception_score: null
+  fid: null
+  denoising_injections:
+    timestep: 300
+    img_path: ${data_dir}/${deletion.img_name[0]}
+  likelihood: 
+  membership_loss: null
+   
+ema:
+  use_ema: false 
+
+subfolders:
+  unet_ema: null
+  noise_scheduler: null
+
+scheduler:
+  _type: pretrained
+  _target_: diffusers.DDPMScheduler
+  prediction_type: epsilon
+
+sampling_steps: 1 
+checkpointing_steps: 60 
+training_steps: 60
+warmup_steps: 0 # for lr scheduler
+eval_batch_size: 1
+gradient_accumulation_steps: 1
+mixed_precision: null
+resume_from_checkpoint: null
+train_batch_size: 4 
+dataloader_num_workers: 0
+checkpoints_total_limit: null
+
+lr_scheduler: constant
+lr_warmup_steps: 0
+
+dataset_all:
+  _target_: data.src.celeb_dataset.CelebAHQ
+  filter: nondeletion
+  data_path: ${data_dir}
+  remove_img_names: ${deletion.img_name}
+
+dataset_deletion:
+  _target_: data.src.celeb_dataset.CelebAHQ
+  filter: deletion
+  data_path: ${data_dir}
+  remove_img_names: ${deletion.img_name}
+
+unet:
+  _target_: diffusers.UNet2DModel
+
+optimizer:
+  _target_: torch.optim.AdamW
+  lr: 3e-6 #5e-6
+  betas: 
+    - 0.95
+    - 0.999
+  weight_decay: 1e-6
+  eps: 1e-8
+
+logging:
+  logger: wandb 
+  logging_dir: logs
+
+pipeline:
+  num_inference_steps: 50
